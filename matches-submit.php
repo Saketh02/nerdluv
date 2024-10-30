@@ -1,14 +1,15 @@
 <?php
-include ("session_check.php"); 
-include("top.php"); 
+include("session_check.php");
+include("top.php");
 ?>
 <style>
     .match img {
-        height: 100px; 
+        height: 100px;
         object-fit: cover;
     }
 </style>
-<h1>Matches for <?= $_GET["name"] ?></h1>
+
+<h1>Matches for <?= htmlspecialchars($_GET["name"]) ?></h1>
 <div class='match'>
     <?php printMatchesFromFile(); ?>
 </div>
@@ -19,40 +20,57 @@ include("top.php");
 
 function printMatchesFromFile()
 {
-    $loginUser = "";
-    foreach (file("singles.txt", FILE_IGNORE_NEW_LINES) as $loginUser) {
-        if ($_GET["name"] == explode(",", $loginUser)[0]) {
+    $loginUser = null;
+    $name = $_GET["name"];
+    
+    foreach (file("singles.txt", FILE_IGNORE_NEW_LINES) as $user) {
+        $userData = explode(",", $user);
+        if ($userData[0] === $name) {
+            $loginUser = $userData;
             break;
         }
     }
+    if (!$loginUser) {
+        echo "<p>User with the given name doesn't exist.</p>";
+        return;
+    }
 
+    list($loginName, $loginGender, $loginAge, $loginType, $loginOS, $loginMinAge, $loginMaxAge) = $loginUser;
+    
     foreach (file("singles.txt", FILE_IGNORE_NEW_LINES) as $matchUser) {
         $matchUserData = explode(",", $matchUser);
+        list($matchName, $matchGender, $matchAge, $matchType, $matchOS) = $matchUserData;
+
 
         if (
-            $matchUserData[0] != explode(",", $loginUser)[0]
-            && $matchUserData[1] != explode(",", $loginUser)[1]
-            && $matchUserData[2] >= explode(",", $loginUser)[5]
-            && $matchUserData[2] <= explode(",", $loginUser)[6]
-            && $matchUserData[4] == explode(",", $loginUser)[4]
-            && (
-                str_contains($matchUserData[3], str_split(explode(",", $loginUser)[3])[0])
-                || str_contains($matchUserData[3], str_split(explode(",", $loginUser)[3])[1])
-                || str_contains($matchUserData[3], str_split(explode(",", $loginUser)[3])[2])
-                || str_contains($matchUserData[3], str_split(explode(",", $loginUser)[3])[3])
-            )
+            $matchName != $loginName &&  
+            $matchGender != $loginGender && 
+            $matchAge >= $loginMinAge && $matchAge <= $loginMaxAge &&
+            $loginAge >= $matchUserData[5] && $loginAge <= $matchUserData[6] &&
+            $matchOS == $loginOS &&
+            countMatchingPersonalityLetters($loginType, $matchType) >= 1  
         ) {
             $userImage = isset($matchUserData[7]) ? $matchUserData[7] : 'images/user.jpg';
             ?>
-            <p><img src='<?= htmlspecialchars($userImage) ?>' alt='user icon' class='user-icon'><?= htmlspecialchars($matchUserData[0]) ?></p>
+            <p><img src='<?= htmlspecialchars($userImage) ?>' alt='user icon' class='user-icon'><?= htmlspecialchars($matchName) ?></p>
             <ul>
-                <li><strong>gender:</strong> <?= htmlspecialchars($matchUserData[1]) ?></li>
-                <li><strong>age:</strong> <?= htmlspecialchars($matchUserData[2]) ?></li>
-                <li><strong>type:</strong> <?= htmlspecialchars($matchUserData[3]) ?></li>
-                <li><strong>OS:</strong> <?= htmlspecialchars($matchUserData[4]) ?></li>
+                <li><strong>gender:</strong> <?= htmlspecialchars($matchGender) ?></li>
+                <li><strong>age:</strong> <?= htmlspecialchars($matchAge) ?></li>
+                <li><strong>type:</strong> <?= htmlspecialchars($matchType) ?></li>
+                <li><strong>OS:</strong> <?= htmlspecialchars($matchOS) ?></li>
             </ul>
-        <?php }
+            <?php
+        }
     }
 }
-
+function countMatchingPersonalityLetters($type1, $type2)
+{
+    $matches = 0;
+    for ($i = 0; $i < min(strlen($type1), strlen($type2)); $i++) {
+        if ($type1[$i] === $type2[$i]) {
+            $matches++;
+        }
+    }
+    return $matches;
+}
 ?>
